@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List with Priority</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 500px;
+        }
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        input, select, button {
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        li {
+            background: #f9f9f9;
+            margin: 5px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .priority-low { color: green; }
+        .priority-medium { color: orange; }
+        .priority-high { color: red; }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .controls button {
+            flex: 1;
+            margin: 5px;
+        }
+        .radio-group {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        #sortTime {
+            text-align: center;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Todo List</h1>
+        <form id="todoForm">
+            <input type="text" id="taskInput" placeholder="Enter a task" required>
+            <select id="priorityInput" required>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+            <button type="submit">Add Task</button>
+        </form>
+        <ul id="todoList"></ul>
+        <div class="controls">
+            <button id="sortAscending">Sort Ascending</button>
+            <button id="sortDescending">Sort Descending</button>
+            <button id="shuffleTasks">Shuffle Tasks</button>
+            <button id="addRandomTasks">Add 100 Random Tasks</button>
+            <button id="deleteAllTasks">Delete All Tasks</button>
+        </div>
+        <div class="radio-group">
+            <label>
+                <input type="radio" name="sortType" value="iterative" checked> Iterative
+            </label>
+            <label>
+                <input type="radio" name="sortType" value="recursive"> Recursive
+            </label>
+        </div>
+        <div id="sortTime"></div>
+    </div>
+
+    <script>
+        const todoForm = document.getElementById('todoForm');
+        const todoList = document.getElementById('todoList');
+        const sortTimeDisplay = document.getElementById('sortTime');
+
+        todoForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            addTask();
+        });
+
+        function addTask(task = null, priority = null) {
+            const taskInput = document.getElementById('taskInput');
+            const priorityInput = document.getElementById('priorityInput');
+
+            const taskValue = task || taskInput.value.trim();
+            const priorityValue = priority || priorityInput.value;
+
+            if (!taskValue) return;
+
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span>${taskValue}</span>
+                <span class="priority-${priorityValue}">${priorityValue.charAt(0).toUpperCase() + priorityValue.slice(1)} Priority</span>
+            `;
+            li.dataset.priority = priorityValue;
+            todoList.appendChild(li);
+
+            taskInput.value = '';
+        }
+
+        function insertionSort(tasks, compare) {
+            for (let i = 1; i < tasks.length; i++) {
+                let key = tasks[i];
+                let j = i - 1;
+                while (j >= 0 && compare(tasks[j], key) > 0) {
+                    tasks[j + 1] = tasks[j];
+                    j--;
+                }
+                tasks[j + 1] = key;
+            }
+            return tasks;
+        }
+
+        function quickSort(tasks, compare) {
+            if (tasks.length <= 1) return tasks;
+            const pivot = tasks[tasks.length - 1];
+            const left = [];
+            const right = [];
+
+            for (let i = 0; i < tasks.length - 1; i++) {
+                if (compare(tasks[i], pivot) <= 0) {
+                    left.push(tasks[i]);
+                } else {
+                    right.push(tasks[i]);
+                }
+            }
+
+            return [...quickSort(left, compare), pivot, ...quickSort(right, compare)];
+        }
+
+        function sortTasks(ascending) {
+            const startTime = performance.now();
+            const tasks = Array.from(todoList.children);
+            const sortType = document.querySelector('input[name="sortType"]:checked').value;
+
+            const priorityOrder = { low: 3, medium: 2, high: 1 };
+            const compare = (a, b) => {
+                const order = priorityOrder[a.dataset.priority] - priorityOrder[b.dataset.priority];
+                return ascending ? order : -order;
+            };
+
+            const sortedTasks = sortType === 'iterative' ? insertionSort(tasks, compare) : quickSort(tasks, compare);
+            sortedTasks.forEach(task => todoList.appendChild(task));
+
+            const endTime = performance.now();
+            sortTimeDisplay.innerText = `Sort Time: ${(endTime - startTime).toFixed(2)} ms (${sortType})`;
+        }
+
+        function shuffleTasks() {
+            const tasks = Array.from(todoList.children);
+            for (let i = tasks.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [tasks[i], tasks[j]] = [tasks[j], tasks[i]];
+            }
+            tasks.forEach(task => todoList.appendChild(task));
+        }
+
+        function addRandomTasks() {
+            const priorities = ['low', 'medium', 'high'];
+            for (let i = 0; i < 100; i++) {
+                addTask(`Task ${i + 1}`, priorities[Math.floor(Math.random() * priorities.length)]);
+            }
+        }
+
+        function deleteAllTasks() {
+            todoList.innerHTML = '';
+            sortTimeDisplay.innerText = '';
+        }
+
+        document.getElementById('sortAscending').addEventListener('click', () => sortTasks(true));
+        document.getElementById('sortDescending').addEventListener('click', () => sortTasks(false));
+        document.getElementById('shuffleTasks').addEventListener('click', shuffleTasks);
+        document.getElementById('addRandomTasks').addEventListener('click', addRandomTasks);
+        document.getElementById('deleteAllTasks').addEventListener('click', deleteAllTasks);
+    </script>
+</body>
+</html>
